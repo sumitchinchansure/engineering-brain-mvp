@@ -1,0 +1,25 @@
+{
+  "name": "engineering-brain-mvp",
+  "version": "0.1.0",
+  "description": "CLI that ingests a GitHub repo's PRs and commits, then answers \"why was this built?\" questions with evidence links.",
+  "private": true,
+  "bin": {
+    "brain": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc && chmod +x dist/index.js",
+    "start": "node dist/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@octokit/rest": "^20.1.1",
+    "@supabase/supabase-js": "^2.45.4",
+    "commander": "^12.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.10",
+    "typescript": "^5.5.4"
+  }
+}
