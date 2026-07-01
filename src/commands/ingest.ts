@@ -3,6 +3,7 @@ import { embed } from '../lib/embeddings';
 import { upsertItem } from '../lib/supabase';
 import { saveLastRepo } from '../lib/state';
 import { validateEnv } from '../lib/env';
+import { logError, logInfo, logSuccess } from '../lib/log';
 import type { IndexedItem } from '../types';
 
 export interface IngestOptions {
@@ -16,7 +17,7 @@ export async function ingestCommand(repoUrl: string, options: IngestOptions): Pr
   try {
     parsed = parseRepoUrl(repoUrl);
   } catch (err) {
-    console.error(`Error: ${(err as Error).message}`);
+    logError(`Error: ${(err as Error).message}`);
     process.exit(1);
   }
 
@@ -24,7 +25,7 @@ export async function ingestCommand(repoUrl: string, options: IngestOptions): Pr
   const octokit = createGithubClient();
 
   try {
-    console.log(`Fetching PRs and commits for ${owner}/${repo}...`);
+    logInfo(`Fetching PRs and commits for ${owner}/${repo}...`);
 
     const [prs, commits] = await Promise.all([
       fetchPRs(octokit, owner, repo, options.since),
@@ -40,7 +41,7 @@ export async function ingestCommand(repoUrl: string, options: IngestOptions): Pr
       try {
         embedding = await embed(text);
       } catch (err) {
-        console.error(`OpenAI API error while embedding PR #${pr.number}: ${(err as Error).message}`);
+        logError(`OpenAI API error while embedding PR #${pr.number}: ${(err as Error).message}`);
         process.exit(1);
       }
 
@@ -57,7 +58,7 @@ export async function ingestCommand(repoUrl: string, options: IngestOptions): Pr
 
       const { error } = await upsertItem(item);
       if (error) {
-        console.error(`Failed to store PR #${pr.number} (${pr.url}): ${error}`);
+        logError(`Failed to store PR #${pr.number} (${pr.url}): ${error}`);
         continue;
       }
       indexedPRs++;
@@ -69,7 +70,7 @@ export async function ingestCommand(repoUrl: string, options: IngestOptions): Pr
       try {
         embedding = await embed(commit.message);
       } catch (err) {
-        console.error(`OpenAI API error while embedding commit ${commit.sha.slice(0, 7)}: ${(err as Error).message}`);
+        logError(`OpenAI API error while embedding commit ${commit.sha.slice(0, 7)}: ${(err as Error).message}`);
         process.exit(1);
       }
 
@@ -86,20 +87,20 @@ export async function ingestCommand(repoUrl: string, options: IngestOptions): Pr
 
       const { error } = await upsertItem(item);
       if (error) {
-        console.error(`Failed to store commit ${commit.sha.slice(0, 7)} (${commit.url}): ${error}`);
+        logError(`Failed to store commit ${commit.sha.slice(0, 7)} (${commit.url}): ${error}`);
         continue;
       }
       indexedCommits++;
     }
 
     saveLastRepo(canonicalUrl);
-    console.log(`Indexed ${indexedPRs} PRs, ${indexedCommits} commits`);
+    logSuccess(`Indexed ${indexedPRs} PRs, ${indexedCommits} commits`);
   } catch (err) {
     if (err instanceof GithubRateLimitError) {
-      console.error(`Error: ${err.message}`);
+      logError(`Error: ${err.message}`);
       process.exit(1);
     }
-    console.error(`Error: ${(err as Error).message}`);
+    logError(`Error: ${(err as Error).message}`);
     process.exit(1);
   }
 }

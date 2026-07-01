@@ -1,9 +1,11 @@
+import chalk from 'chalk';
 import { embed } from '../lib/embeddings';
 import { answer } from '../lib/llm';
 import { searchSimilarItems } from '../lib/supabase';
 import { loadLastRepo } from '../lib/state';
 import { validateEnv } from '../lib/env';
 import { parseRepoUrl } from '../lib/github';
+import { logError, logWarn } from '../lib/log';
 import type { MatchedItem } from '../types';
 
 export interface AskOptions {
@@ -21,7 +23,7 @@ export async function askCommand(question: string, options: AskOptions): Promise
 
   const repoUrlInput = options.repo ?? loadLastRepo();
   if (!repoUrlInput) {
-    console.error(
+    logError(
       'Error: no repo specified and none has been ingested yet. Run `brain ingest <github-repo-url>` first, or pass --repo <url>.'
     );
     process.exit(1);
@@ -33,13 +35,13 @@ export async function askCommand(question: string, options: AskOptions): Promise
     const questionEmbedding = await embed(question);
     const { data: matches, error } = await searchSimilarItems(canonicalUrl, questionEmbedding, MATCH_COUNT);
     if (error) {
-      console.error(`Error: vector search failed: ${error}`);
+      logError(`Error: vector search failed: ${error}`);
       process.exit(1);
     }
 
     const relevant = matches.filter((m: MatchedItem) => m.similarity >= RELEVANCE_THRESHOLD);
     if (relevant.length === 0) {
-      console.log(NOT_ENOUGH_CONTEXT_MESSAGE);
+      logWarn(NOT_ENOUGH_CONTEXT_MESSAGE);
       return;
     }
 
@@ -50,12 +52,12 @@ export async function askCommand(question: string, options: AskOptions): Promise
     const responseText = await answer(question, context);
     console.log(responseText);
     console.log('');
-    console.log('Sources:');
+    console.log(chalk.cyan('Sources:'));
     for (const m of relevant) {
-      console.log(`- ${m.source_url}`);
+      console.log(chalk.blue(`- ${m.source_url}`));
     }
   } catch (err) {
-    console.error(`Error: ${(err as Error).message}`);
+    logError(`Error: ${(err as Error).message}`);
     process.exit(1);
   }
 }

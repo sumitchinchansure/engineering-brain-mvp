@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
+import chalk from 'chalk';
 import { loadDotEnv } from './lib/env';
 import { ingestCommand } from './commands/ingest';
 import { askCommand } from './commands/ask';
@@ -41,6 +42,6 @@ program
   });
 
 program.parseAsync(process.argv).catch((err) => {
-  console.error(`Error: ${(err as Error).message}`);
+  console.error(chalk.red(`Error: ${(err as Error).message}`));
   process.exit(1);
 });

@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import chalk from 'chalk';
 
 const REQUIRED_ENV_VARS = [
   'GITHUB_TOKEN',
@@ -46,11 +47,11 @@ export function loadDotEnv(): void {
 export function validateEnv(): void {
   const missing = REQUIRED_ENV_VARS.filter((key) => !process.env[key]);
   if (missing.length > 0) {
-    console.error('Missing required environment variables:');
+    console.error(chalk.red('Missing required environment variables:'));
     for (const key of missing) {
-      console.error(`  - ${key}`);
+      console.error(chalk.red(`  - ${key}`));
     }
-    console.error('\nSet these in a .env file (see .env.example) or your shell environment.');
+    console.error(chalk.yellow('\nSet these in a .env file (see .env.example) or your shell environment.'));
     process.exit(1);
   }
 }
