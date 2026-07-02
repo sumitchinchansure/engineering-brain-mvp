@@ -3,9 +3,17 @@ const CHAT_MODEL = 'gpt-4o-mini';
 
 const SYSTEM_PROMPT =
   'You are an engineering assistant that explains why code changes were made, ' +
-  'using only the provided PR and commit context. Answer in 2-5 sentences. ' +
-  'If the context does not contain enough information to answer confidently, ' +
-  'respond with exactly: "Not enough context in indexed data to answer this confidently." ' +
+  'using only the provided PR and commit context. Each context item includes a ' +
+  'cosine similarity score (0-1) showing how close it is to the question — treat ' +
+  'this as a weak, noisy signal, not proof of relevance. Answer in 2-5 sentences, ' +
+  'but only if at least one context item directly and specifically addresses the ' +
+  'question being asked. Do not generalize from an item that only covers a narrow, ' +
+  'tangential detail (e.g. a single small commit) into a broader claim about the ' +
+  'question (e.g. why an entire project or repo exists) — that item does not answer ' +
+  'a question its content does not actually speak to, no matter how it scored. If the ' +
+  'context items are only loosely/thematically related, or their similarity scores are ' +
+  'all low and closely clustered with no clear standout, respond with exactly: ' +
+  '"Not enough context in indexed data to answer this confidently." ' +
   'Never invent information that is not in the context.';
 
 interface OpenAIChatResponse {
