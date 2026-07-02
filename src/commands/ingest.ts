@@ -32,10 +32,16 @@ export async function ingestCommand(repoUrl: string, options: IngestOptions): Pr
       fetchCommits(octokit, owner, repo, options.since),
     ]);
 
+    logInfo(`Found ${prs.length} PRs and ${commits.length} commits. Embedding and indexing (this calls OpenAI once per item, so it can take a while on large repos)...`);
+
     let indexedPRs = 0;
     let indexedCommits = 0;
+    const PROGRESS_INTERVAL = 20;
 
-    for (const pr of prs) {
+    for (const [i, pr] of prs.entries()) {
+      if (i > 0 && i % PROGRESS_INTERVAL === 0) {
+        logInfo(`  PRs: ${i}/${prs.length}...`);
+      }
       const text = `${pr.title}\n\n${pr.body ?? ''}`;
       let embedding: number[];
       try {
@@ -64,7 +70,10 @@ export async function ingestCommand(repoUrl: string, options: IngestOptions): Pr
       indexedPRs++;
     }
 
-    for (const commit of commits) {
+    for (const [i, commit] of commits.entries()) {
+      if (i > 0 && i % PROGRESS_INTERVAL === 0) {
+        logInfo(`  Commits: ${i}/${commits.length}...`);
+      }
       const firstLine = commit.message.split('\n')[0];
       let embedding: number[];
       try {
