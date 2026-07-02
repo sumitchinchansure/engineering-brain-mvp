@@ -14,9 +14,14 @@ export interface AskOptions {
 
 const NOT_ENOUGH_CONTEXT_MESSAGE = 'Not enough context in indexed data to answer this confidently.';
 const MATCH_COUNT = 5;
-// Below this cosine similarity, top results are treated as irrelevant noise
-// rather than real signal (vector search always returns *something*).
-const RELEVANCE_THRESHOLD = 0.75;
+// text-embedding-3-small cosine similarities cluster in a narrow positive
+// band rather than spreading 0-1, so a high fixed cutoff rejects real
+// matches (empirically, a genuinely relevant match scored 0.29 while an
+// irrelevant one scored 0.39 on a different question/corpus — the absolute
+// value isn't a reliable relevance signal by itself). This floor only
+// filters out near-zero noise; GPT-4o-mini's system prompt is the real judge
+// of whether the retrieved context actually answers the question.
+const RELEVANCE_FLOOR = 0.15;
 
 export async function askCommand(question: string, options: AskOptions): Promise<void> {
   validateEnv();
@@ -39,7 +44,7 @@ export async function askCommand(question: string, options: AskOptions): Promise
       process.exit(1);
     }
 
-    const relevant = matches.filter((m: MatchedItem) => m.similarity >= RELEVANCE_THRESHOLD);
+    const relevant = matches.filter((m: MatchedItem) => m.similarity >= RELEVANCE_FLOOR);
     if (relevant.length === 0) {
       logWarn(NOT_ENOUGH_CONTEXT_MESSAGE);
       return;
@@ -51,10 +56,13 @@ export async function askCommand(question: string, options: AskOptions): Promise
 
     const responseText = await answer(question, context);
     console.log(responseText);
-    console.log('');
-    console.log(chalk.cyan('Sources:'));
-    for (const m of relevant) {
-      console.log(chalk.blue(`- ${m.source_url}`));
+
+    if (!responseText.includes(NOT_ENOUGH_CONTEXT_MESSAGE)) {
+      console.log('');
+      console.log(chalk.cyan('Sources:'));
+      for (const m of relevant) {
+        console.log(chalk.blue(`- ${m.source_url}`));
+      }
     }
   } catch (err) {
     logError(`Error: ${(err as Error).message}`);

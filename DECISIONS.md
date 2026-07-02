@@ -19,9 +19,13 @@ The spec's command signatures are `brain ask "<question>"` and `brain status` �
 
 This is a small local pointer, not a data cache — it stores one URL string, not any PR/commit content. It doesn't conflict with "Local DB cache: None — Supabase only," which is about not caching indexed data locally.
 
-## 4. Relevance threshold for "not enough context"
+## 4. Relevance threshold for "not enough context" (revised after live testing)
 
-`pgvector` cosine similarity search always returns the closest `N` rows even when nothing in the corpus is actually relevant (e.g. asking about Redis in a repo that never mentions it). To satisfy the acceptance criterion that irrelevant questions get "Not enough context..." instead of a hallucinated answer, `brain ask` discards matches with cosine similarity below `0.75` (`src/commands/ask.ts`) before sending anything to the LLM. If all 5 matches fall below that bar, it prints the fallback message and skips the LLM call entirely. This threshold is a heuristic and may need tuning per-repo; it isn't specified in the spec.
+`pgvector` cosine similarity search always returns the closest `N` rows even when nothing in the corpus is actually relevant (e.g. asking about Redis in a repo that never mentions it). The original approach discarded matches below a `0.75` cosine similarity cutoff before calling the LLM.
+
+Live testing against real OpenAI embeddings falsified that cutoff: a genuinely relevant PR match scored `0.29`, while an irrelevant match on a different question/corpus scored `0.39` — `text-embedding-3-small` cosine similarities cluster in a narrow positive band rather than spreading `0`-`1`, so no fixed high threshold reliably separates relevant from irrelevant across different questions and corpora.
+
+Revised design: `RELEVANCE_FLOOR = 0.15` only filters out near-zero noise (or an empty match set). Everything above that floor is passed to GPT-4o-mini, whose system prompt instructs it to reply with the exact fallback sentence when the retrieved context doesn't actually answer the question — `src/commands/ask.ts` checks for that sentence in the LLM's response and suppresses the "Sources" section when it's present. This shifts relevance judgment from a blunt cosine number to the LLM itself, which is the standard RAG pattern and is more robust than any single embedding-similarity cutoff.
 
 ## 5. Canonical repo URL normalization
 
