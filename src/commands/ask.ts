@@ -51,7 +51,10 @@ export async function askCommand(question: string, options: AskOptions): Promise
     }
 
     const context = relevant
-      .map((m, i) => `[${i + 1}] (${m.type}) ${m.title}\n${m.body}\nSource: ${m.source_url}`)
+      .map(
+        (m, i) =>
+          `[${i + 1}] (${m.type}, similarity ${m.similarity.toFixed(2)}) ${m.title}\n${m.body}\nSource: ${m.source_url}`
+      )
       .join('\n\n');
 
     const responseText = await answer(question, context);
