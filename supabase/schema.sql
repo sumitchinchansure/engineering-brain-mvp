@@ -19,6 +19,13 @@ create table if not exists indexed_items (
   unique (source_url)
 );
 
+-- This CLI is single-user with no auth layer (by design, per spec) and
+-- authenticates to Supabase with the anon key. Supabase projects enable RLS
+-- by default on new tables, which blocks anon inserts with no policy — so we
+-- explicitly disable it here rather than adding an auth layer this MVP
+-- doesn't need.
+alter table indexed_items disable row level security;
+
 -- Speeds up brain status / repo-scoped lookups.
 create index if not exists indexed_items_repo_url_idx on indexed_items (repo_url);
 

@@ -35,6 +35,10 @@ The spec's file-structure comment says `ingest.ts` "fetches GitHub data, generat
 
 PR bodies/commit messages are truncated to 20,000 characters before embedding (`src/lib/embeddings.ts`) as a conservative guard against `text-embedding-3-small`'s ~8,191 token limit, since the spec doesn't specify truncation behavior for oversized inputs.
 
+## 8. Row-Level Security disabled on `indexed_items`
+
+Found during manual end-to-end testing: Supabase enables RLS by default on new tables, and with no policy defined, every insert from the anon key was rejected ("new row violates row-level security policy"). Since the spec explicitly excludes an auth/role-based-access layer and the CLI only ever authenticates as a single anon-key user, `supabase/schema.sql` now explicitly runs `alter table indexed_items disable row level security;` rather than adding policies for a permission model this MVP doesn't have.
+
 ## P1 status
 
 Per the Blocker Protocol, P0 was completed and committed first. The `--since` date flag fell out naturally from `fetchPRs`/`fetchCommits` already accepting an optional cutoff (needed internally either way), so it shipped in the same pass as P0 rather than as a separate deferred commit. `chalk` colour output is the one remaining P1 item, added in its own follow-up commit after the P0 commit.
